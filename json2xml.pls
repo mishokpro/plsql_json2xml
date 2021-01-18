@@ -309,6 +309,7 @@ begin
       when ']' then
         close_tag(v_string);
         v_string := null;
+        v_is_tag := true;
       when ':' then
         open_tag(v_string);
         v_string := null;
