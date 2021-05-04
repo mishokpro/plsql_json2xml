@@ -105,7 +105,7 @@ create or replace function json2xml(
     end if;
   end write;
   
-  function read_string(p_stop_char char default '"', p_length pls_integer default null) return varchar as
+  function read_string(p_stop_char char default '"', p_length pls_integer default null) return varchar2 as
     v_string varchar2(32767);
     v_unicode varchar2(4);
     v_count pls_integer := 0;
