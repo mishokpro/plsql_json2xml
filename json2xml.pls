@@ -66,7 +66,7 @@ create or replace function json2xml(
     return false;
   end is_numeric;
   
-  function read(p_length pls_integer default 1) return varchar2 as
+  function read return varchar2 as
     v_buffer_pos pls_integer := mod(v_pos, 32767);
     v_amount pls_integer := 32767;
     v_char char;
@@ -76,7 +76,7 @@ create or replace function json2xml(
       if v_buffer_pos = 0 then
         dbms_lob.read(p_json, v_amount, v_pos, v_buffer_read);
       end if;
-      v_char := substr(v_buffer_read, v_buffer_pos + 1, p_length); --TODO: p_length>1
+      v_char := substr(v_buffer_read, v_buffer_pos + 1, 1);
     else
       error('Position (' || v_pos || ') must be less then CLOB length (' || v_json_length || ').');
     end if;
@@ -105,40 +105,39 @@ create or replace function json2xml(
     end if;
   end write;
   
-  function read_string(p_stop_char char default '"', p_length pls_integer default null) return varchar2 as
+  function read_string(p_stop_char char default '"', p_length pls_integer default null, p_write boolean default false) return varchar as
     v_string varchar2(32767);
     v_unicode varchar2(4);
     v_count pls_integer := 0;
-    v_length pls_integer := nvl(p_length, 32767);
   begin
     v_char := read;
-    while v_char != p_stop_char and v_count < v_length loop
+    while v_char != p_stop_char and (v_count < p_length or p_length is null) loop
       case v_char
         when '\' then
           v_char := read;
           case v_char
             when '"' then
-              v_string := v_string || v_char;
+              if p_write then write(escape(v_char)); else v_string := v_string || v_char; end if;
             when '\' then
-              v_string := v_string || v_char;
+              if p_write then write(escape(v_char)); else v_string := v_string || v_char; end if;
             when '/' then
-              v_string := v_string || v_char;
+              if p_write then write(escape(v_char)); else v_string := v_string || v_char; end if;
             when 't' then
-              v_string := v_string || chr(9); --tabulator
+              if p_write then write(escape(chr(9))); else v_string := v_string || chr(9); end if; --tabulator
             when 'n' then
-              v_string := v_string || chr(10); --newline
+              if p_write then write(escape(chr(10))); else v_string := v_string || chr(10); end if; --newline
             when 'r' then
-              v_string := v_string || chr(12); --formfeed
+              if p_write then write(escape(chr(12))); else v_string := v_string || chr(12); end if; --formfeed
             when 'f' then
-              v_string := v_string || chr(13); --carret
+              if p_write then write(escape(chr(13))); else v_string := v_string || chr(13); end if; --carret
             when 'b' then
-              v_string := v_string || chr(8); --backspace
+              if p_write then write(escape(chr(8))); else v_string := v_string || chr(8); end if; --backspace
             when 'u' then --unicode
               for i in 1..4 loop
                 v_unicode := v_unicode || read;
               end loop;
               if is_numeric(v_unicode, 'xxxx') then
-                v_string := v_string || unistr('\' || v_unicode);
+                if p_write then write(escape(unistr('\' || v_unicode))); else v_string := v_string || unistr('\' || v_unicode); end if;
               else
                 error('Expected hex value but got \u' || v_unicode || '.');
               end if;
@@ -147,7 +146,7 @@ create or replace function json2xml(
               error('Unexpected ''' || v_char || ''' (' || ascii(v_char) || ') on position ' || v_pos || '.');
           end case;
         else
-           v_string := v_string || v_char;
+          if p_write then write(escape(v_char)); else v_string := v_string || v_char; end if;
       end case;
       v_count := v_count + 1;
       v_char := read;
@@ -246,7 +245,7 @@ create or replace function json2xml(
     end if;
   end open_tag;
   
-  procedure close_tag(p_text clob default null, p_delete boolean default true, p_final boolean default false) as
+  procedure close_tag(p_text varchar2 default null, p_delete boolean default true, p_final boolean default false) as
     v_num pls_integer;
   begin
     if p_text is not null then
@@ -323,7 +322,7 @@ begin
           open_tag(v_tag.name, p_add => false);
         end if;
       when '"' then
-        v_string := read_string('"');
+        v_string := read_string(p_write => not v_is_tag);
         v_is_value := true;
       else
         if v_char in ('t', 'f', 'n') then
