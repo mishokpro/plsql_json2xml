@@ -127,7 +127,8 @@ create or replace function json2xml(
             when 'n' then
               if p_write then write(escape(chr(10))); else v_string := v_string || chr(10); end if; --newline
             when 'r' then
-              if p_write then write(escape(chr(12))); else v_string := v_string || chr(12); end if; --formfeed
+              --if p_write then write(escape(chr(12))); else v_string := v_string || chr(12); end if; --formfeed
+              v_count := v_count + 1;
             when 'f' then
               if p_write then write(escape(chr(13))); else v_string := v_string || chr(13); end if; --carret
             when 'b' then
