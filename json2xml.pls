@@ -85,27 +85,21 @@ create or replace function json2xml(
   
   procedure write(p_text varchar2, p_final boolean default false) as
   begin
-    --1st var
-    /*if lengthb(p_text) > 32767 - lengthb(v_buffer_write) then
-      dbms_lob.writeappend(v_xml, length(v_buffer_write), v_buffer_write);
-      v_buffer_write := p_text;
-    else
-      v_buffer_write := v_buffer_write || p_text;
-    end if;*/
-    --2nd var
-    begin
-      v_buffer_write := v_buffer_write || p_text;
-    exception when value_error then
-      dbms_lob.writeappend(v_xml, length(v_buffer_write), v_buffer_write);
-      v_buffer_write := p_text;
-    end;
+    if p_text is not null then
+      if lengthb(p_text) + lengthb(v_buffer_write) > 32767 then
+        dbms_lob.writeappend(v_xml, length(v_buffer_write), v_buffer_write);
+        v_buffer_write := p_text;
+      else
+        v_buffer_write := v_buffer_write || p_text;
+      end if;
+    end if;
     if p_final then
       dbms_lob.writeappend(v_xml, length(v_buffer_write), v_buffer_write);
       v_buffer_write := null;
     end if;
   end write;
   
-  function read_string(p_stop_char char default '"', p_length pls_integer default null, p_write boolean default false) return varchar as
+  function read_string(p_stop_char char default '"', p_length pls_integer default null, p_write boolean default false) return varchar2 as
     v_string varchar2(32767);
     v_unicode varchar2(4);
     v_count pls_integer := 0;
@@ -233,10 +227,14 @@ create or replace function json2xml(
     v_num pls_integer;
   begin
     begin
-      v_num := to_number(substr(p_tag, 1, 1));
+      v_num := to_number(substr(p_tag, 1, 2));
       write('<' || p_item_tag || ' id="' || p_tag || '">');
     exception when value_error then
-      write('<' || p_tag || '>');
+      if regexp_like(p_tag, '^\w+$')  then
+        write('<' || p_tag || '>');
+      else
+        write('<' || p_item_tag || ' name="' || p_tag || '">');
+      end if;
     end;
     if p_add then
       v_tag.name := p_tag;
@@ -253,13 +251,17 @@ create or replace function json2xml(
       write(p_text);
     end if;
     begin
-      v_num := to_number(substr(v_tag_stack(v_tag_stack.last).name, 1, 1));
+      v_num := to_number(substr(v_tag_stack(v_tag_stack.last).name, 1, 2));
       write('</' || p_item_tag || '>', p_final);
     exception when value_error then
-      write('</' || v_tag_stack(v_tag_stack.last).name || '>', p_final);
+      if regexp_like(v_tag_stack(v_tag_stack.last).name, '^\w+$')  then
+        write('</' || v_tag_stack(v_tag_stack.last).name || '>', p_final);
+      else
+        write('</' || p_item_tag || '>', p_final);
+      end if;
     end;
     if p_delete then
-      v_tag_stack.delete(v_tag_stack.last);
+      v_tag_stack.trim();
       if v_tag_stack.count > 0 then
         v_tag := v_tag_stack(v_tag_stack.last);
       else
@@ -275,7 +277,10 @@ create or replace function json2xml(
   end set_type;
   
 begin
-  dbms_lob.createtemporary(v_xml, true, dbms_lob.session);
+  if p_json is null then
+    return null;
+  end if;
+  dbms_lob.createtemporary(v_xml, true, dbms_lob.call);
   v_char := read;
   case v_char
     when '{' then
@@ -368,7 +373,7 @@ begin
     else
       error('Invalid JSON. Expected ''}'' or '']'' on position ' || v_pos || '.');
   end case;
-  v_result := xmltype(v_xml);
+  v_result := xmltype(v_xml, wellformed => 1);
   dbms_lob.freetemporary(v_xml);
   return v_result;
 end json2xml;
