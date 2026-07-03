@@ -225,7 +225,7 @@ create or replace function json2xml(
   
   procedure open_tag(p_tag varchar2, p_type varchar2 default 'object', p_add boolean default true) as
   begin
-    if regexp_like(p_tag, '^\w+$')  then
+    if regexp_like(p_tag, '^[a-zA-Z]+$')  then
       write('<' || p_tag || '>');
     else
       write('<' || p_item_tag || ' id="' || p_tag || '">');
@@ -243,7 +243,7 @@ create or replace function json2xml(
     if p_text is not null then
       write(p_text);
     end if;
-    if regexp_like(v_tag_stack(v_tag_stack.last).name, '^\w+$')  then
+    if regexp_like(v_tag_stack(v_tag_stack.last).name, '^[a-zA-Z]+$')  then
       write('</' || v_tag_stack(v_tag_stack.last).name || '>', p_final);
     else
       write('</' || p_item_tag || '>', p_final);
