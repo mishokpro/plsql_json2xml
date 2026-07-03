@@ -223,19 +223,14 @@ create or replace function json2xml(
     return v_string;
   end read_number;
   
-  procedure open_tag(p_tag varchar2, p_type varchar2 default 'object', p_add boolean default true) as
+    procedure open_tag(p_tag varchar2, p_type varchar2 default 'object', p_add boolean default true) as
     v_num pls_integer;
   begin
-    begin
-      v_num := to_number(substr(p_tag, 1, 2));
+    if regexp_like(p_tag, '^\w+$')  then
+      write('<' || p_tag || '>');
+    else
       write('<' || p_item_tag || ' id="' || p_tag || '">');
-    exception when value_error then
-      if regexp_like(p_tag, '^\w+$')  then
-        write('<' || p_tag || '>');
-      else
-        write('<' || p_item_tag || ' name="' || p_tag || '">');
-      end if;
-    end;
+    end if;
     if p_add then
       v_tag.name := p_tag;
       v_tag.type := p_type;
@@ -250,16 +245,11 @@ create or replace function json2xml(
     if p_text is not null then
       write(p_text);
     end if;
-    begin
-      v_num := to_number(substr(v_tag_stack(v_tag_stack.last).name, 1, 2));
+    if regexp_like(v_tag_stack(v_tag_stack.last).name, '^\w+$')  then
+      write('</' || v_tag_stack(v_tag_stack.last).name || '>', p_final);
+    else
       write('</' || p_item_tag || '>', p_final);
-    exception when value_error then
-      if regexp_like(v_tag_stack(v_tag_stack.last).name, '^\w+$')  then
-        write('</' || v_tag_stack(v_tag_stack.last).name || '>', p_final);
-      else
-        write('</' || p_item_tag || '>', p_final);
-      end if;
-    end;
+    end if;
     if p_delete then
       v_tag_stack.trim();
       if v_tag_stack.count > 0 then
