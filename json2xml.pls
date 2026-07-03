@@ -223,8 +223,7 @@ create or replace function json2xml(
     return v_string;
   end read_number;
   
-    procedure open_tag(p_tag varchar2, p_type varchar2 default 'object', p_add boolean default true) as
-    v_num pls_integer;
+  procedure open_tag(p_tag varchar2, p_type varchar2 default 'object', p_add boolean default true) as
   begin
     if regexp_like(p_tag, '^\w+$')  then
       write('<' || p_tag || '>');
@@ -240,7 +239,6 @@ create or replace function json2xml(
   end open_tag;
   
   procedure close_tag(p_text varchar2 default null, p_delete boolean default true, p_final boolean default false) as
-    v_num pls_integer;
   begin
     if p_text is not null then
       write(p_text);
