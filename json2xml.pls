@@ -44,13 +44,8 @@ create or replace function json2xml(
   end bool2char;
   
   function escape(p_text varchar2) return varchar2 as
-    v_result varchar2(32767) := p_text;
   begin
-    v_result := replace(v_result, '&', '&amp;');
-    v_result := replace(v_result, '<', '&lt;');
-    v_result := replace(v_result, '>', '&gt;');
-    v_result := replace(v_result, '"', '&quot;');
-    return v_result;
+    return dbms_xmlgen.convert(p_text);
   end escape;
   
   function is_numeric(p_text varchar2, p_mask varchar2 default null) return boolean as
