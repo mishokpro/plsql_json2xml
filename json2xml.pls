@@ -222,10 +222,18 @@ create or replace function json2xml(
     v_skip_read := true;
     return v_string;
   end read_number;
+
+  function is_valid_tag_name(p_tag varchar2) return boolean as
+  begin
+    if regexp_like(p_tag, '^[a-zA-Z_:][0-9a-zA-Z_:.-]*$') then
+      return true;
+    end if;
+    return false;
+  end is_valid_tag_name;
   
   procedure open_tag(p_tag varchar2, p_type varchar2 default 'object', p_add boolean default true) as
   begin
-    if regexp_like(p_tag, '^[a-zA-Z]+$')  then
+    if is_valid_tag_name(p_tag) then
       write('<' || p_tag || '>');
     else
       write('<' || p_item_tag || ' id="' || p_tag || '">');
@@ -243,7 +251,7 @@ create or replace function json2xml(
     if p_text is not null then
       write(p_text);
     end if;
-    if regexp_like(v_tag_stack(v_tag_stack.last).name, '^[a-zA-Z]+$')  then
+    if is_valid_tag_name(v_tag_stack(v_tag_stack.last).name) then
       write('</' || v_tag_stack(v_tag_stack.last).name || '>', p_final);
     else
       write('</' || p_item_tag || '>', p_final);
